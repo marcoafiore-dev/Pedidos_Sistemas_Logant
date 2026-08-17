@@ -7,15 +7,16 @@ export default async function handler(req, res) {
     const { formData } = req.body;
 
     // Obtener token OAuth
+    const params = new URLSearchParams();
+    params.append('client_id', 'e080457b-14f8-4132-8528-1bbc86013dd2');
+    params.append('client_secret', '1354c500-4c51-44f8-8194-6b7ebd4370f9');
+    params.append('scope', 'https://graph.microsoft.com/.default');
+    params.append('grant_type', 'client_credentials');
+
     const tokenResponse = await fetch(`https://login.microsoftonline.com/1afa1aed-4a0d-467f-8ad1-aaa807737986/oauth2/v2.0/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: 'e080457b-14f8-4132-8528-1bbc86013dd2',
-        client_secret: '1354c500-4c51-44f8-8194-6b7ebd4370f9',
-        scope: 'https://graph.microsoft.com/.default',
-        grant_type: 'client_credentials'
-      })
+      body: params.toString()
     });
 
     const tokenData = await tokenResponse.json();
