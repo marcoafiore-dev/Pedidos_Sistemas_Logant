@@ -1,6 +1,3 @@
-console.log("TENANT:", process.env.AZURE_TENANT_ID);
-console.log("CLIENT:", process.env.AZURE_CLIENT_ID);
-console.log("SECRET:", process.env.AZURE_CLIENT_SECRET ? "OK" : "MISSING");
 export const config = {
   api: {
     bodyParser: true
@@ -8,16 +5,40 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  try {
-    // Asegurar que el body se parseó correctamente
-    const fields = req.body?.fields;
+  // CORS Headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (!fields) {
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  try {
+    // Extraer formData del body
+    const formData = req.body?.formData;
+
+    if (!formData) {
       return res.status(400).json({
         error: "No llegaron los campos desde el formulario",
         bodyRecibido: req.body
       });
     }
+
+    // Construir estructura de fields para SharePoint
+    const fields = {
+      Title: formData.Title,
+      Tipo: formData.Tipo,
+      Sistema: formData.Sistema || '',
+      Necesidad: formData.Necesidad,
+      MejoraEsperada: formData.MejoraEsperada || '',
+      Impacto: formData.Impacto || '',
+      Urgencia: formData.Urgencia,
+      Areadenegocio: formData.Areadenegocio || '',
+      Justificacion: formData.Justificacion,
+      Estado: formData.Estado || 'Nuevo'
+    };
 
     // 1. Obtener token de Azure AD
     const tokenResponse = await fetch(
