@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Enable API routes
+  pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
+  // Production build
+  reactStrictMode: true,
   publicRuntimeConfig: {
     AZURE_CLIENT_ID: process.env.AZURE_CLIENT_ID,
     AZURE_TENANT_ID: process.env.AZURE_TENANT_ID
@@ -8,13 +12,7 @@ const nextConfig = {
     AZURE_CLIENT_ID: process.env.AZURE_CLIENT_ID,
     AZURE_CLIENT_SECRET: process.env.AZURE_CLIENT_SECRET,
     AZURE_TENANT_ID: process.env.AZURE_TENANT_ID
-  },
-  api: {
-    bodyParser: {
-      sizeLimit: '1mb',
-    },
-  },
+  }
 }
 
 module.exports = nextConfig
-// Force rebuild - Mon Aug 17 21:20:50 UTC 2026
