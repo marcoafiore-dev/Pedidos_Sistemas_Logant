@@ -60,6 +60,7 @@
             </select>
         </div>
 
+        <!-- SISTEMA (solo visible si tipo = Mejora o Corrección) -->
         <div class="form-group" id="grupoSistema">
             <label for="sistema">Sistema</label>
             <select id="sistema">
@@ -112,11 +113,11 @@
 </div>
 
 <script>
-    // Mostrar u ocultar SISTEMA según el tipo de solicitud
+    // --- CONDICIONALIDAD DE SISTEMA ---
     const tipoSelect = document.getElementById("tipo");
     const grupoSistema = document.getElementById("grupoSistema");
 
-    grupoSistema.style.display = "none"; // Ocultar por defecto
+    grupoSistema.style.display = "none"; // ocultar por defecto
 
     tipoSelect.addEventListener("change", () => {
         const valor = tipoSelect.value;
@@ -129,31 +130,10 @@
         }
     });
 
+    // --- ENVÍO DEL FORMULARIO ---
     document.getElementById("pedidoForm").addEventListener("submit", async (e) => {
         e.preventDefault();
 
         const formData = {
             Tipo: document.getElementById("tipo").value,
-            Sistema: document.getElementById("sistema").value,
-            Necesidad: document.getElementById("necesidad").value,
-            MejoraEsperada: document.getElementById("mejoraEsperada").value,
-            Impacto: document.getElementById("impacto").value,
-            Urgencia: document.getElementById("urgencia").value,
-            Areadenegocio: document.getElementById("area").value,
-            Justificacion: document.getElementById("justificacion").value,
-            Title: document.getElementById("necesidad").value
-        };
-
-        const response = await fetch("/api/createItem", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ formData })
-        });
-
-        const result = await response.json();
-        alert(result.message || result.error);
-    });
-</script>
-
-</body>
-</html>
+            Sistema
