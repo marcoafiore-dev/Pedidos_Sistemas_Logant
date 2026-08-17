@@ -1,3 +1,6 @@
+console.log("TENANT:", process.env.AZURE_TENANT_ID);
+console.log("CLIENT:", process.env.AZURE_CLIENT_ID);
+console.log("SECRET:", process.env.AZURE_CLIENT_SECRET ? "OK" : "MISSING");
 export const config = {
   api: {
     bodyParser: true
