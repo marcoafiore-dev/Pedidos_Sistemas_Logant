@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 2. Crear item en SharePoint
+    // 2. Crear item en SharePoint con INTERNAL NAMES correctos
     const item = {
       fields: {
         Title: formData.Title,
@@ -40,9 +40,10 @@ export default async function handler(req, res) {
         MejoraEsperada: formData.MejoraEsperada || "",
         Impacto: formData.Impacto || "",
         Urgencia: formData.Urgencia,
-        Areadenegocio: formData.Areadenegocio || "",
         Justificacion: formData.Justificacion,
         Estado: "Nuevo",
+        Areadenegocio: formData.Areadenegocio || "",
+        Fechadeentregaesperada: formData.Fechadeentregaesperada || null
       },
     };
 
