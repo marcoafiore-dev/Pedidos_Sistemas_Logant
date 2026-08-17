@@ -1,0 +1,63 @@
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { formData } = req.body;
+
+    // Obtener token OAuth
+    const tokenResponse = await fetch(`https://login.microsoftonline.com/1afa1aed-4a0d-467f-8ad1-aaa807737986/oauth2/v2.0/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: 'e080457b-14f8-4132-8528-1bbc86013dd2',
+        client_secret: '1354c500-4c51-44f8-8194-6b7ebd4370f9',
+        scope: 'https://graph.microsoft.com/.default',
+        grant_type: 'client_credentials'
+      })
+    });
+
+    const tokenData = await tokenResponse.json();
+    if (!tokenData.access_token) {
+      throw new Error('No se pudo obtener token');
+    }
+
+    // Crear item en SharePoint
+    const item = {
+      fields: {
+        Title: formData.Title,
+        Tipo: formData.Tipo,
+        Sistema: formData.Sistema || '',
+        Necesidad: formData.Necesidad,
+        MejoraEsperada: formData.MejoraEsperada || '',
+        Impacto: formData.Impacto || '',
+        Urgencia: formData.Urgencia,
+        Areadenegocio: formData.Areadenegocio || '',
+        Justificacion: formData.Justificacion,
+        Estado: 'Nuevo'
+      }
+    };
+
+    const createResponse = await fetch(
+      `https://graph.microsoft.com/v1.0/sites/logisticaantartica.sharepoint.com:/sites/Sistemas:/lists/Pedidos%20de%20Sistemas/items`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${tokenData.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(item)
+      }
+    );
+
+    if (!createResponse.ok) {
+      throw new Error(`Error SharePoint: ${createResponse.status}`);
+    }
+
+    res.status(200).json({ success: true, message: 'Item creado exitosamente' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+}
