@@ -1,262 +1,158 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pedidos de Sistemas</title>
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f9;
-      margin: 0;
-      padding: 0;
-    }
-
-    .container {
-      max-width: 900px;
-      margin: 40px auto;
-      background: white;
-      padding: 30px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-
-    .header {
-      background: linear-gradient(90deg, #1e3a8a, #2563eb);
-      padding: 20px;
-      color: white;
-      border-radius: 8px 8px 0 0;
-      text-align: center;
-    }
-
-    .form-content {
-      margin-top: 20px;
-    }
-
-    .form-group {
-      margin-bottom: 20px;
-    }
-
-    label {
-      font-weight: bold;
-      display: block;
-      margin-bottom: 6px;
-    }
-
-    input, select, textarea {
-      width: 100%;
-      padding: 10px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      font-size: 14px;
-      transition: 0.2s;
-    }
-
-    input:focus, select:focus, textarea:focus {
-      border-color: #2563eb;
-      box-shadow: 0 0 4px rgba(37,99,235,0.4);
-    }
-
-    textarea {
-      resize: vertical;
-      min-height: 100px;
-    }
-
-    .button-group {
-      display: flex;
-      gap: 12px;
-      margin-top: 30px;
-      padding-top: 20px;
-      border-top: 1px solid #ecf0f1;
-    }
-
-    button {
-      padding: 11px 20px;
-      border-radius: 4px;
-      border: none;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-      flex: 1;
-    }
-
-    .btn-submit {
-      background: #1e3a8a;
-      color: white;
-    }
-
-    .btn-submit:hover:not(:disabled) {
-      opacity: 0.9;
-    }
-
-    .btn-reset {
-      background: transparent;
-      color: #7f8c8d;
-      border: 1px solid #d0d0d0;
-    }
-
-    .success-message, .error-message {
-      display: none;
-      padding: 12px;
-      border-radius: 4px;
-      margin-bottom: 20px;
-    }
-
-    .success-message {
-      background: #d4edda;
-      border: 1px solid #c3e6cb;
-      color: #155724;
-    }
-
-    .error-message {
-      background: #f8d7da;
-      border: 1px solid #f5c6cb;
-      color: #721c24;
-    }
-
-    .show {
-      display: block;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedidos de Sistemas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            font-weight: bold;
+        }
+        select, input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+        }
+        button {
+            background-color: #0078D4;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #005A9E;
+        }
+    </style>
 </head>
-
 <body>
 
 <div class="container">
-  <div class="header">
     <h2>Pedidos de Sistemas</h2>
-  </div>
-
-  <div class="form-content">
-    <div id="successMsg" class="success-message">✔ Solicitud enviada correctamente.</div>
-    <div id="errorMsg" class="error-message">❌ Hubo un error al enviar la solicitud.</div>
 
     <form id="pedidoForm">
 
-      <div class="form-group">
-        <label for="tipo">Tipo de solicitud</label>
-        <select id="tipo" required>
-          <option value="">Seleccionar...</option>
-          <option value="Nueva funcionalidad">Nueva funcionalidad</option>
-          <option value="Mejora">Mejora</option>
-          <option value="Corrección">Corrección</option>
-        </select>
-      </div>
+        <div class="form-group">
+            <label for="tipo">Tipo de Solicitud</label>
+            <select id="tipo" required>
+                <option value="">Seleccione...</option>
+                <option value="Mejora">Mejora</option>
+                <option value="Corrección">Corrección</option>
+                <option value="Nueva funcionalidad">Nueva funcionalidad</option>
+            </select>
+        </div>
 
-      <div class="form-group">
-        <label for="sistema">Sistema</label>
-        <select id="sistema">
-          <option value="">Seleccionar...</option>
-          <option value="SISO">SISO</option>
-          <option value="SITAS">SITAS</option>
-          <option value="SIVA">SIVA</option>
-          <option value="Las violetas">Las violetas</option>
-          <option value="Gesindus">Gesindus</option>
-        </select>
-      </div>
+        <div class="form-group" id="grupoSistema">
+            <label for="sistema">Sistema</label>
+            <select id="sistema">
+                <option value="">Seleccione...</option>
+                <option value="WMS">WMS</option>
+                <option value="TMS">TMS</option>
+                <option value="SmartDispatch">SmartDispatch</option>
+                <option value="PowerBI">PowerBI</option>
+            </select>
+        </div>
 
-      <div class="form-group">
-        <label for="necesidad">¿Qué necesitas?</label>
-        <textarea id="necesidad" required></textarea>
-      </div>
+        <div class="form-group">
+            <label for="necesidad">Necesidad</label>
+            <input type="text" id="necesidad" required>
+        </div>
 
-      <div class="form-group">
-        <label for="mejora">Mejora esperada</label>
-        <textarea id="mejora"></textarea>
-      </div>
+        <div class="form-group">
+            <label for="mejoraEsperada">Mejora esperada</label>
+            <textarea id="mejoraEsperada"></textarea>
+        </div>
 
-      <div class="form-group">
-        <label for="impacto">Impacto en tu trabajo</label>
-        <textarea id="impacto"></textarea>
-      </div>
+        <div class="form-group">
+            <label for="impacto">Impacto en tu trabajo</label>
+            <textarea id="impacto"></textarea>
+        </div>
 
-      <div class="form-group">
-        <label for="urgencia">Nivel de urgencia</label>
-        <select id="urgencia" required>
-          <option value="">Seleccionar...</option>
-          <option value="Baja">Baja</option>
-          <option value="Media">Media</option>
-          <option value="Alta">Alta</option>
-        </select>
-      </div>
+        <div class="form-group">
+            <label for="urgencia">Nivel de urgencia</label>
+            <select id="urgencia" required>
+                <option value="">Seleccione...</option>
+                <option value="Alta">Alta</option>
+                <option value="Media">Media</option>
+                <option value="Baja">Baja</option>
+            </select>
+        </div>
 
-      <div class="form-group">
-        <label for="area">Área de negocio</label>
-        <select id="area">
-          <option value="">Seleccionar...</option>
-          <option value="Administración">Administración</option>
-          <option value="Operaciones">Operaciones</option>
-          <option value="Finanzas">Finanzas</option>
-          <option value="Capital humano">Capital humano</option>
-          <option value="Sistemas">Sistemas</option>
-          <option value="Comercial">Comercial</option>
-        </select>
-      </div>
+        <div class="form-group">
+            <label for="area">Área de negocio</label>
+            <input type="text" id="area">
+        </div>
 
-      <div class="form-group">
-        <label for="justificacion">Justificación</label>
-        <textarea id="justificacion" required></textarea>
-      </div>
+        <div class="form-group">
+            <label for="justificacion">Justificación</label>
+            <textarea id="justificacion" required></textarea>
+        </div>
 
-      <div class="button-group">
-        <button type="submit" class="btn-submit">Enviar solicitud</button>
-        <button type="reset" class="btn-reset">Limpiar</button>
-      </div>
+        <button type="submit">Enviar Pedido</button>
 
     </form>
-  </div>
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("pedidoForm");
-  const successMsg = document.getElementById("successMsg");
-  const errorMsg = document.getElementById("errorMsg");
+    // Mostrar u ocultar SISTEMA según el tipo de solicitud
+    const tipoSelect = document.getElementById("tipo");
+    const grupoSistema = document.getElementById("grupoSistema");
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+    grupoSistema.style.display = "none"; // Ocultar por defecto
 
-    successMsg.classList.remove("show");
-    errorMsg.classList.remove("show");
+    tipoSelect.addEventListener("change", () => {
+        const valor = tipoSelect.value;
 
-    const formData = {
-      Title: document.getElementById("tipo").value,
-      Tipo: document.getElementById("tipo").value,
-      Sistema: document.getElementById("sistema").value || "",
-      Necesidad: document.getElementById("necesidad").value,
-      MejoraEsperada: document.getElementById("mejora").value || "",
-      Impacto: document.getElementById("impacto").value || "",
-      Urgencia: document.getElementById("urgencia").value,
-      Areadenegocio: document.getElementById("area").value || "",
-      Justificacion: document.getElementById("justificacion").value,
-      Estado: "Nuevo"
-    };
+        if (valor === "Mejora" || valor === "Corrección") {
+            grupoSistema.style.display = "block";
+        } else {
+            grupoSistema.style.display = "none";
+            document.getElementById("sistema").value = "";
+        }
+    });
 
-    try {
-      const res = await fetch("/api/createItem", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ formData })
-      });
+    document.getElementById("pedidoForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-      const result = await res.json();
+        const formData = {
+            Tipo: document.getElementById("tipo").value,
+            Sistema: document.getElementById("sistema").value,
+            Necesidad: document.getElementById("necesidad").value,
+            MejoraEsperada: document.getElementById("mejoraEsperada").value,
+            Impacto: document.getElementById("impacto").value,
+            Urgencia: document.getElementById("urgencia").value,
+            Areadenegocio: document.getElementById("area").value,
+            Justificacion: document.getElementById("justificacion").value,
+            Title: document.getElementById("necesidad").value
+        };
 
-      if (res.ok) {
-        successMsg.classList.add("show");
-        form.reset();
-      } else {
-        errorMsg.classList.add("show");
-        console.error(result);
-      }
+        const response = await fetch("/api/createItem", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ formData })
+        });
 
-    } catch (err) {
-      errorMsg.classList.add("show");
-      console.error("Error:", err);
-    }
-  });
-});
+        const result = await response.json();
+        alert(result.message || result.error);
+    });
 </script>
 
 </body>
