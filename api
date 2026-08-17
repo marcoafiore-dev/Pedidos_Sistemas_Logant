@@ -1,4 +1,15 @@
 export default async function handler(req, res) {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+  
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -6,14 +17,13 @@ export default async function handler(req, res) {
   try {
     const { formData } = req.body;
 
-    // Obtener token OAuth
     const params = new URLSearchParams();
-    params.append('client_id', 'e080457b-14f8-4132-8528-1bbc86013dd2');
-    params.append('client_secret', '1354c500-4c51-44f8-8194-6b7ebd4370f9');
+    params.append('client_id', process.env.AZURE_CLIENT_ID);
+    params.append('client_secret', process.env.AZURE_CLIENT_SECRET);
     params.append('scope', 'https://graph.microsoft.com/.default');
     params.append('grant_type', 'client_credentials');
 
-    const tokenResponse = await fetch(`https://login.microsoftonline.com/1afa1aed-4a0d-467f-8ad1-aaa807737986/oauth2/v2.0/token`, {
+    const tokenResponse = await fetch(`https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/oauth2/v2.0/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params.toString()
@@ -24,7 +34,6 @@ export default async function handler(req, res) {
       throw new Error('No se pudo obtener token');
     }
 
-    // Crear item en SharePoint
     const item = {
       fields: {
         Title: formData.Title,
@@ -53,6 +62,7 @@ export default async function handler(req, res) {
     );
 
     if (!createResponse.ok) {
+      const error = await createResponse.json();
       throw new Error(`Error SharePoint: ${createResponse.status}`);
     }
 
