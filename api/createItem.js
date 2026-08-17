@@ -1,6 +1,20 @@
+export const config = {
+  api: {
+    bodyParser: true
+  }
+};
+
 export default async function handler(req, res) {
   try {
-    const { fields } = req.body;
+    // Asegurar que el body se parseó correctamente
+    const fields = req.body?.fields;
+
+    if (!fields) {
+      return res.status(400).json({
+        error: "No llegaron los campos desde el formulario",
+        bodyRecibido: req.body
+      });
+    }
 
     // 1. Obtener token de Azure AD
     const tokenResponse = await fetch(
