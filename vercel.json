@@ -1,7 +1,7 @@
 {
   "env": {
     "AZURE_CLIENT_ID": "e080457b-14f8-4132-8528-1bbc86013dd2",
-    "AZURE_CLIENT_SECRET": "@azure_client_secret",
+    "AZURE_CLIENT_SECRET":  "AZURE_CLIENT_SECRET",
     "AZURE_TENANT_ID": "1afa1aed-4a0d-467f-8ad1-aaa807737986"
   }
 }
