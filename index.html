@@ -326,8 +326,86 @@
         const errorMessage = document.getElementById('errorMessage');
         const submitBtn = document.getElementById('submitBtn');
 
-        // URL del webhook de Power Automate
-        const WEBHOOK_URL = 'https://default1afa1aed4a0d467f8ad1aaa8077379.86.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/04/workflows/6996ef169a134d6e8cd9c6d2de05f039/triggers/manual/paths/invoke?api-version=1';
+        // Configuración Azure
+        const AZURE_CONFIG = {
+            clientId: 'e080457b-14f8-4132-8528-1bbc86013dd2',
+            clientSecret: '1354c500-4c51-44f8-8194-6b7ebd4370f9',
+            tenantId: '1afa1aed-4a0d-467f-8ad1-aaa807737986',
+            sharePointSite: 'logisticaantartica.sharepoint.com',
+            sharePointPath: '/sites/Sistemas',
+            listName: 'Pedidos de Sistemas'
+        };
+
+        let accessToken = null;
+
+        // Obtener token OAuth
+        async function getAccessToken() {
+            try {
+                const response = await fetch(`https://login.microsoftonline.com/${AZURE_CONFIG.tenantId}/oauth2/v2.0/token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({
+                        client_id: AZURE_CONFIG.clientId,
+                        client_secret: AZURE_CONFIG.clientSecret,
+                        scope: 'https://graph.microsoft.com/.default',
+                        grant_type: 'client_credentials'
+                    })
+                });
+
+                const data = await response.json();
+                if (data.access_token) {
+                    accessToken = data.access_token;
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('Error getting token:', error);
+                return false;
+            }
+        }
+
+        // Crear item en SharePoint
+        async function createSharePointItem(formData) {
+            if (!accessToken) {
+                const tokenOk = await getAccessToken();
+                if (!tokenOk) throw new Error('No se pudo autenticar');
+            }
+
+            const item = {
+                fields: {
+                    Title: formData.Title,
+                    Tipo: formData.Tipo,
+                    Sistema: formData.Sistema,
+                    Necesidad: formData.Necesidad,
+                    MejoraEsperada: formData.MejoraEsperada,
+                    Impacto: formData.Impacto,
+                    Urgencia: formData.Urgencia,
+                    Areadenegocio: formData.Areadenegocio,
+                    Justificacion: formData.Justificacion,
+                    Estado: 'Nuevo'
+                }
+            };
+
+            const response = await fetch(
+                `https://graph.microsoft.com/v1.0/sites/${AZURE_CONFIG.sharePointSite}:${AZURE_CONFIG.sharePointPath}:/lists/${AZURE_CONFIG.listName}/items`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(item)
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status} ${response.statusText}`);
+            }
+
+            return await response.json();
+        }
 
         tipoSelect.addEventListener('change', function() {
             if (this.value === 'Evolutivo') {
@@ -365,24 +443,11 @@
                 Impacto: document.getElementById('impacto').value,
                 Urgencia: document.getElementById('urgencia').value,
                 Areadenegocio: document.getElementById('area').value || '',
-                Justificacion: document.getElementById('justificacion').value,
-                Fechadeentregaesperada: document.getElementById('fecha').value || null,
-                Estado: 'Nuevo'
+                Justificacion: document.getElementById('justificacion').value
             };
 
             try {
-                const response = await fetch(WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formData)
-                });
-
-                if (!response.ok) {
-                    throw new Error('Error en el servidor: ' + response.statusText);
-                }
-
+                await createSharePointItem(formData);
                 successMessage.classList.add('show');
                 errorMessage.classList.remove('show');
                 form.reset();
