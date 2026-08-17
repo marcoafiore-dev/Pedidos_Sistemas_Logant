@@ -1,83 +1,55 @@
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Método no permitido" });
-  }
+import fetch from 'node-fetch';
 
+export default async function handler(req, res) {
   try {
-    const { formData } = req.body;
+    const { fields } = req.body;
 
     // 1. Obtener token de Azure AD
     const tokenResponse = await fetch(
       `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/oauth2/v2.0/token`,
       {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
           client_id: process.env.AZURE_CLIENT_ID,
           client_secret: process.env.AZURE_CLIENT_SECRET,
-          scope: "https://graph.microsoft.com/.default",
-          grant_type: "client_credentials",
-        }),
+          scope: 'https://graph.microsoft.com/.default',
+          grant_type: 'client_credentials'
+        })
       }
     );
 
     const tokenData = await tokenResponse.json();
+    const accessToken = tokenData.access_token;
 
-    if (!tokenResponse.ok) {
-      return res.status(500).json({
-        error: "Error obteniendo token",
-        details: tokenData,
-      });
+    if (!accessToken) {
+      throw new Error('No se pudo obtener token de Azure');
     }
 
-    // 2. Crear item en SharePoint con INTERNAL NAMES correctos
-    const item = {
-      fields: {
-        Title: formData.Title,
-        Tipo: formData.Tipo,
-        Sistema: formData.Sistema || "",
-        Necesidad: formData.Necesidad,
-        MejoraEsperada: formData.MejoraEsperada || "",
-        Impacto: formData.Impacto || "",
-        Urgencia: formData.Urgencia,
-        Justificacion: formData.Justificacion,
-        Estado: "Nuevo",
-        Areadenegocio: formData.Areadenegocio || "",
-        Fechadeentregaesperada: formData.Fechadeentregaesperada || null
-      },
-    };
-
-    const spResponse = await fetch(
-      "https://graph.microsoft.com/v1.0/sites/logisticaantartica.sharepoint.com:/sites/Sistemas:/lists/Pedidos de Sistemas/items",
+    // 2. Crear item en SharePoint
+    const graphResponse = await fetch(
+      'https://graph.microsoft.com/v1.0/sites/logisticaantartica.sharepoint.com:/sites/Sistemas:/lists/Pedidos%20de%20Sistemas/items',
       {
-        method: "POST",
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${tokenData.access_token}`,
-          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(item),
+        body: JSON.stringify({ fields })
       }
     );
 
-    const spData = await spResponse.json();
+    const graphData = await graphResponse.json();
 
-    if (!spResponse.ok) {
-      return res.status(500).json({
-        error: "Error creando item en SharePoint",
-        details: spData,
-      });
+    if (!graphResponse.ok) {
+      console.error(graphData);
+      throw new Error('Error creando item en SharePoint');
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Item creado exitosamente",
-      data: spData,
-    });
+    res.status(200).json({ ok: true, item: graphData });
 
   } catch (error) {
-    return res.status(500).json({
-      error: "Error interno del servidor",
-      details: error.message,
-    });
+    console.error(error);
+    res.status(500).json({ error: error.message });
   }
 }
