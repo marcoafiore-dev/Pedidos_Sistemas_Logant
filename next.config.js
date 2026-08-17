@@ -17,3 +17,4 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
+// Force rebuild - Mon Aug 17 21:20:50 UTC 2026
