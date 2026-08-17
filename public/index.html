@@ -394,12 +394,15 @@
             if (this.value === 'Evolutivo') {
                 sistemaGroup.classList.remove('hidden');
                 sistemaSel.required = true;
-            } else {
+            } else if (this.value === 'Desarrollo nuevo') {
                 sistemaGroup.classList.add('hidden');
                 sistemaSel.required = false;
                 sistemaSel.value = '';
             }
         });
+
+        // Inicializar: Sistema debe estar oculto por defecto
+        sistemaGroup.classList.add('hidden');
 
         // Enviar formulario
         form.addEventListener('submit', async function(e) {
@@ -413,6 +416,21 @@
 
             if (tipoSelect.value === 'Evolutivo' && !sistemaSel.value) {
                 alert('Por favor selecciona el sistema a mejorar');
+                return;
+            }
+
+            if (!document.getElementById('necesidad').value) {
+                alert('Por favor completa el campo "¿Qué necesitas?"');
+                return;
+            }
+
+            if (!document.getElementById('urgencia').value) {
+                alert('Por favor selecciona el nivel de urgencia');
+                return;
+            }
+
+            if (!document.getElementById('justificacion').value) {
+                alert('Por favor completa la justificación');
                 return;
             }
 
