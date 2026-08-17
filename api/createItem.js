@@ -1,5 +1,3 @@
-import fetch from 'node-fetch';
-
 export default async function handler(req, res) {
   try {
     const { fields } = req.body;
@@ -20,11 +18,15 @@ export default async function handler(req, res) {
     );
 
     const tokenData = await tokenResponse.json();
-    const accessToken = tokenData.access_token;
 
-    if (!accessToken) {
-      throw new Error('No se pudo obtener token de Azure');
+    if (!tokenData.access_token) {
+      return res.status(500).json({
+        error: 'No se pudo obtener token de Azure',
+        details: tokenData
+      });
     }
+
+    const accessToken = tokenData.access_token;
 
     // 2. Crear item en SharePoint
     const graphResponse = await fetch(
@@ -42,14 +44,20 @@ export default async function handler(req, res) {
     const graphData = await graphResponse.json();
 
     if (!graphResponse.ok) {
-      console.error(graphData);
-      throw new Error('Error creando item en SharePoint');
+      return res.status(500).json({
+        error: 'Error creando item en SharePoint',
+        details: graphData
+      });
     }
 
-    res.status(200).json({ ok: true, item: graphData });
+    return res.status(200).json({
+      ok: true,
+      item: graphData
+    });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({
+      error: error.message
+    });
   }
 }
