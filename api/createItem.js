@@ -47,7 +47,7 @@ export default async function handler(req, res) {
     };
 
     const spResponse = await fetch(
-      "https://graph.microsoft.com/v1.0/sites/logisticaantartica.sharepoint.com/sites/Sistemas/lists/Pedidos%20de%20Sistemas/items",
+      "https://graph.microsoft.com/v1.0/sites/logisticaantartica.sharepoint.com:/sites/Sistemas:/lists/Pedidos de Sistemas/items",
       {
         method: "POST",
         headers: {
