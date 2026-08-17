@@ -47,5 +47,36 @@ export default async function handler(req, res) {
     };
 
     const spResponse = await fetch(
-      "https
+      "https://graph.microsoft.com/v1.0/sites/logisticaantartica.sharepoint.com/sites/Sistemas/lists/Pedidos%20de%20Sistemas/items",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(item),
+      }
+    );
 
+    const spData = await spResponse.json();
+
+    if (!spResponse.ok) {
+      return res.status(500).json({
+        error: "Error creando item en SharePoint",
+        details: spData,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Item creado exitosamente",
+      data: spData,
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      error: "Error interno del servidor",
+      details: error.message,
+    });
+  }
+}
