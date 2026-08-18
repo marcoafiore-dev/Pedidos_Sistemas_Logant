@@ -17,3 +17,5 @@ Variables de entorno requeridas en Vercel:
 ## Notas importantes
 - El permiso `Sites.ReadWrite.All` debe estar otorgado como **Application permission bajo la API "Microsoft Graph"** (no bajo la API legacy "SharePoint") en el App Registration "Pedidos Sistemas Form" en Entra ID, con admin consent.
 - Los valores de los campos tipo Choice (`Tipo`, `Sistema`, `Urgencia`, `Areadenegocio`, `Estado`) deben coincidir exactamente con las opciones configuradas en la columna correspondiente de la lista SharePoint. Si se agrega/cambia una opción en el formulario, hay que actualizar también la columna en SharePoint (y viceversa).
+
+<!-- redeploy trigger -->
