@@ -120,86 +120,11 @@ export default async function handler(req, res) {
       });
     }
 
-    // Ahora crear la tarjeta en MS Planner
-    const PLAN_ID = 'ekFDOut6PU6ODY-adkcGCWQABrRz';
-    const BUCKET_NAME = 'Pendiente';
-
-    try {
-      // Primero, obtener el ID del bucket "Pendiente"
-      const bucketsRes = await fetch(
-        `https://graph.microsoft.com/v1.0/planner/plans/${PLAN_ID}/buckets`,
-        { headers: { Authorization: `Bearer ${tokenData.access_token}` } }
-      );
-      const bucketsData = await bucketsRes.json();
-      const pendienteBucket = bucketsData.value?.find(b => b.name === BUCKET_NAME);
-      
-      if (!pendienteBucket) {
-        console.warn(`Bucket "${BUCKET_NAME}" no encontrado en Planner`);
-        return res.status(200).json({ 
-          ok: true, 
-          item: graphData,
-          planner: { warning: `Bucket "${BUCKET_NAME}" no encontrado` }
-        });
-      }
-
-      // Mapear urgencia a prioridad de Planner (0=alta, 1=medium, 2=low, 3=urgent)
-      const urgenciaMap = {
-        'Critica': 3,
-        'Alta': 0,
-        'Media': 1,
-        'Baja': 2,
-      };
-      const priority = urgenciaMap[formData.Urgencia] || 1;
-
-      // Crear la tarjeta en Planner
-      const taskTitle = `[${formData.Tipo}] - ${formData.Title}`;
-      const taskDescription = `**Solicitante:** ${formData.Solicitante}\n\n**Necesidad:** ${formData.Necesidad}\n\n**Urgencia:** ${formData.Urgencia}`;
-
-      const plannerTaskRes = await fetch(
-        'https://graph.microsoft.com/v1.0/planner/tasks',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${tokenData.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            planId: PLAN_ID,
-            bucketId: pendienteBucket.id,
-            title: taskTitle,
-            priority: priority,
-            details: {
-              description: taskDescription,
-            },
-          }),
-        }
-      );
-
-      const plannerData = await plannerTaskRes.json();
-
-      if (!plannerTaskRes.ok) {
-        console.warn('Error creando tarjeta en Planner:', plannerData);
-        return res.status(200).json({ 
-          ok: true, 
-          item: graphData,
-          planner: { error: 'No se pudo crear tarjeta en Planner', details: plannerData }
-        });
-      }
-
-      return res.status(200).json({ 
-        ok: true, 
-        item: graphData,
-        planner: { ok: true, taskId: plannerData.id }
-      });
-    } catch (plannerError) {
-      console.warn('Error con Planner:', plannerError.message);
-      // No fallar si Planner falla, pero reportar el error
-      return res.status(200).json({ 
-        ok: true, 
-        item: graphData,
-        planner: { error: plannerError.message }
-      });
-    }
+    return res.status(200).json({ ok: true, item: graphData });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
