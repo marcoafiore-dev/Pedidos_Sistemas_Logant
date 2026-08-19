@@ -32,6 +32,7 @@ export default async function handler(req, res) {
       Impacto: formData.Impacto || '',
       Urgencia: formData.Urgencia,
       Justificacion: formData.Justificacion,
+      Solicitante: formData.Solicitante || 'Usuario Desconocido',
       Estado: formData.Estado || 'Nuevo',
     };
 

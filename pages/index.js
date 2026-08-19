@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const SISTEMAS = ['SIOC', 'SISFA', 'SIVA', 'Las Violetas', 'GesIndu', 'Otro'];
 const URGENCIAS = [
@@ -8,6 +8,20 @@ const URGENCIAS = [
   { value: 'Critica', label: 'Crítica (urgente)' },
 ];
 const AREAS = ['Administracion', 'Operaciones', 'Finanzas', 'Capital Humano', 'Sistemas', 'Comercial'];
+
+// Función para capturar el nombre del usuario desde SharePoint
+const getUserName = () => {
+  // Si hay variable global de SharePoint disponible (cuando se abre desde iframe)
+  if (typeof window !== 'undefined' && window._spPageContextInfo && window._spPageContextInfo.userLoginName) {
+    return window._spPageContextInfo.userLoginName.split('\\').pop();
+  }
+  // Fallback: parámetro en URL
+  if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('user') || 'Usuario Desconocido';
+  }
+  return 'Usuario Desconocido';
+};
 
 const initialState = {
   titulo: '',
@@ -20,10 +34,17 @@ const initialState = {
   area: '',
   justificacion: '',
   fecha: '',
+  solicitante: '',
 };
 
 export default function Home() {
   const [form, setForm] = useState(initialState);
+  
+  // Capturar usuario cuando carga el componente
+  useEffect(() => {
+    const userName = getUserName();
+    setForm(prev => ({ ...prev, solicitante: userName }));
+  }, []);
   const [status, setStatus] = useState(null); // null | 'sending' | 'success' | 'error'
   const [errorMsg, setErrorMsg] = useState('');
   const [closeBlocked, setCloseBlocked] = useState(false);
@@ -73,6 +94,7 @@ export default function Home() {
         Areadenegocio: form.area || '',
         Justificacion: form.justificacion,
         Fechadeentregaesperada: form.fecha || null,
+        Solicitante: form.solicitante,
         Estado: 'Nuevo',
       },
     };
