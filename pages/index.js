@@ -11,15 +11,33 @@ const AREAS = ['Administracion', 'Operaciones', 'Finanzas', 'Capital Humano', 'S
 
 // Función para capturar el nombre del usuario desde SharePoint
 const getUserName = () => {
-  // Si hay variable global de SharePoint disponible (cuando se abre desde iframe)
+  // Estrategia 1: Si hay variable global de SharePoint disponible (cuando se abre desde iframe)
   if (typeof window !== 'undefined' && window._spPageContextInfo && window._spPageContextInfo.userLoginName) {
-    return window._spPageContextInfo.userLoginName.split('\\').pop();
+    const loginName = window._spPageContextInfo.userLoginName.split('\\').pop();
+    return loginName || 'Usuario Desconocido';
   }
-  // Fallback: parámetro en URL
+  
+  // Estrategia 2: Extraer email del document.referrer (SharePoint pasa info en la referencia)
+  if (typeof document !== 'undefined' && document.referrer && document.referrer.includes('sharepoint')) {
+    try {
+      const refererUrl = new URL(document.referrer);
+      // Si hay un parámetro user en la referencia
+      const userParam = refererUrl.searchParams.get('user');
+      if (userParam) return userParam;
+    } catch (e) {
+      // Ignorar errores de URL
+    }
+  }
+  
+  // Estrategia 3: Parámetro en URL actual (fallback)
   if (typeof window !== 'undefined') {
     const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('user') || 'Usuario Desconocido';
+    const userParam = urlParams.get('user');
+    if (userParam && userParam !== '{User.Email}') {
+      return userParam;
+    }
   }
+  
   return 'Usuario Desconocido';
 };
 
