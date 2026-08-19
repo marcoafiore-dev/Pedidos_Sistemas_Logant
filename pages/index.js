@@ -11,33 +11,42 @@ const AREAS = ['Administracion', 'Operaciones', 'Finanzas', 'Capital Humano', 'S
 
 // Función para capturar el nombre del usuario desde SharePoint
 const getUserName = () => {
-  // Estrategia 1: Si hay variable global de SharePoint disponible (cuando se abre desde iframe)
-  if (typeof window !== 'undefined' && window._spPageContextInfo && window._spPageContextInfo.userLoginName) {
-    const loginName = window._spPageContextInfo.userLoginName.split('\\').pop();
-    return loginName || 'Usuario Desconocido';
-  }
-  
-  // Estrategia 2: Extraer email del document.referrer (SharePoint pasa info en la referencia)
-  if (typeof document !== 'undefined' && document.referrer && document.referrer.includes('sharepoint')) {
-    try {
-      const refererUrl = new URL(document.referrer);
-      // Si hay un parámetro user en la referencia
-      const userParam = refererUrl.searchParams.get('user');
-      if (userParam) return userParam;
-    } catch (e) {
-      // Ignorar errores de URL
+  // Estrategia 1: Variable global de SharePoint (_spPageContextInfo)
+  if (typeof window !== 'undefined' && window._spPageContextInfo) {
+    if (window._spPageContextInfo.userEmail) {
+      return window._spPageContextInfo.userEmail;
+    }
+    if (window._spPageContextInfo.userLoginName) {
+      const loginName = window._spPageContextInfo.userLoginName.split('\\').pop();
+      if (loginName) return loginName;
     }
   }
-  
-  // Estrategia 3: Parámetro en URL actual (fallback)
+
+  // Estrategia 2: Buscar en localStorage/sessionStorage (SharePoint a veces lo pone)
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('userEmail') || sessionStorage.getItem('userEmail');
+      if (stored) return stored;
+    } catch (e) {
+      // Ignorar errores de acceso
+    }
+  }
+
+  // Estrategia 3: Buscar en variables globales de SharePoint alternativas
+  if (typeof window !== 'undefined' && window._spUserInfo) {
+    return window._spUserInfo.email || window._spUserInfo.name || 'Usuario Desconocido';
+  }
+
+  // Estrategia 4: Parámetro en URL (solo si no es un token literalizado)
   if (typeof window !== 'undefined') {
     const urlParams = new URLSearchParams(window.location.search);
     const userParam = urlParams.get('user');
-    if (userParam && userParam !== '{User.Email}') {
+    if (userParam && !userParam.startsWith('{') && userParam !== 'Usuario Desconocido') {
       return userParam;
     }
   }
-  
+
+  // Si nada funciona, retornar valor por defecto
   return 'Usuario Desconocido';
 };
 
