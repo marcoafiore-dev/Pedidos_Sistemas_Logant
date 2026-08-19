@@ -69,8 +69,8 @@ export default function Home() {
   
   // Capturar usuario cuando carga el componente
   useEffect(() => {
-    const userName = getUserName();
-    setForm(prev => ({ ...prev, solicitante: userName }));
+    // No pre-llenar con usuario desconocido, dejar vacío para que ingrese manualmente
+    setForm(prev => ({ ...prev, solicitante: '' }));
   }, []);
   const [status, setStatus] = useState(null); // null | 'sending' | 'success' | 'error'
   const [errorMsg, setErrorMsg] = useState('');
