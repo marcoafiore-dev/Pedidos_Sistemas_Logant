@@ -101,6 +101,7 @@ export default function Home() {
     setErrorMsg('');
 
     if (!form.titulo) return setErrorMsg('Por favor completa el título del requerimiento');
+    if (!form.solicitante) return setErrorMsg('Por favor ingresa tu nombre y apellido como Solicitante');
     if (!form.tipo) return setErrorMsg('Por favor selecciona el tipo de solicitud');
     if (form.tipo === 'Mejora' && !form.sistema) return setErrorMsg('Por favor selecciona el sistema a mejorar');
     if (!form.necesidad) return setErrorMsg('Por favor completa el campo "¿Qué necesitas?"');
@@ -169,7 +170,19 @@ export default function Home() {
           </section>
 
           <section>
-            <h2>2. Tipo de Solicitud</h2>
+            <h2>2. Solicitante</h2>
+            <label>Solicitante *</label>
+            <input
+              type="text"
+              placeholder="Nombre Apellido"
+              value={form.solicitante}
+              onChange={update('solicitante')}
+            />
+            <small>Nombre y apellido. Esta persona será el punto focal contactado por Sistemas para avanzar en el relevamiento</small>
+          </section>
+
+          <section>
+            <h2>3. Tipo de Solicitud</h2>
             <label>¿Qué tipo de solicitud es? *</label>
             <select value={form.tipo} onChange={update('tipo')}>
               <option value="">-- Seleccionar --</option>
@@ -191,7 +204,7 @@ export default function Home() {
           </section>
 
           <section>
-            <h2>3. Descripción de la Necesidad</h2>
+            <h2>4. Descripción de la Necesidad</h2>
             <label>¿Qué necesitas? *</label>
             <textarea
               placeholder="Describe el problema o necesidad con el mayor detalle posible"
@@ -223,7 +236,7 @@ export default function Home() {
           </section>
 
           <section>
-            <h2>4. Prioridad y Contexto</h2>
+            <h2>5. Prioridad y Contexto</h2>
             <div className="grid2">
               <div>
                 <label>Nivel de urgencia *</label>
