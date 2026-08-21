@@ -1,3 +1,11 @@
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb',
+    },
+  },
+};
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -22,8 +30,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Choice fields must be omitted entirely when empty (SharePoint rejects "").
-    // Text/Note fields are safe to send as empty strings.
     const fields = {
       Title: formData.Title,
       Tipo: formData.Tipo,
@@ -120,8 +126,52 @@ export default async function handler(req, res) {
       });
     }
 
-    return res.status(200).json({ ok: true, item: graphData });
+    const itemId = graphData.id;
+    let uploadedCount = 0;
+    let failedCount = 0;
+
+    // Si hay attachments, subirlos
+    if (req.body.attachments && req.body.attachments.length > 0) {
+      for (const attachment of req.body.attachments) {
+        try {
+          const attachmentBuffer = Buffer.from(attachment.content, 'base64');
+
+          const attachRes = await fetch(
+            `https://graph.microsoft.com/v1.0/sites/${siteInfo.id}/lists/${LIST_ID}/items/${itemId}/attachments`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${tokenData.access_token}`,
+                'Content-Type': 'application/octet-stream',
+                'Content-Disposition': `attachment; filename="${encodeURIComponent(attachment.name)}"`,
+              },
+              body: attachmentBuffer,
+            }
+          );
+
+          if (attachRes.ok) {
+            uploadedCount++;
+          } else {
+            failedCount++;
+            console.error(`Error uploading attachment ${attachment.name}:`, await attachRes.text());
+          }
+        } catch (attachErr) {
+          failedCount++;
+          console.error(`Error uploading attachment ${attachment.name}:`, attachErr.message);
+        }
+      }
+    }
+
+    return res.status(200).json({ 
+      ok: true, 
+      item: graphData,
+      attachments: {
+        uploaded: uploadedCount,
+        failed: failedCount,
+      }
+    });
   } catch (error) {
+    console.error('API Error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
