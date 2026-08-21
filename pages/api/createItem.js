@@ -22,18 +22,27 @@ export default async function handler(req, res) {
 
   try {
     const formData = req.body?.formData;
+    const attachmentLinks = req.body?.attachmentLinks || [];
 
     if (!formData) {
       return res.status(400).json({
         error: 'No llegaron los campos desde el formulario',
-        bodyRecibido: req.body,
+      });
+    }
+
+    // Construir el campo Necesidad con links de adjuntos si existen
+    let necesidadText = formData.Necesidad || '';
+    if (attachmentLinks && attachmentLinks.length > 0) {
+      necesidadText += '\n\n--- ADJUNTOS ---\n';
+      attachmentLinks.forEach((link, idx) => {
+        necesidadText += `${idx + 1}. ${link.fileName}: ${link.webUrl}\n`;
       });
     }
 
     const fields = {
       Title: formData.Title,
       Tipo: formData.Tipo,
-      Necesidad: formData.Necesidad,
+      Necesidad: necesidadText,
       MejoraEsperada: formData.MejoraEsperada || '',
       Impacto: formData.Impacto || '',
       Urgencia: formData.Urgencia,
@@ -61,11 +70,6 @@ export default async function handler(req, res) {
     if (!clientId || !clientSecret || !tenantId) {
       return res.status(500).json({
         error: 'Faltan variables de entorno de Azure en Vercel',
-        details: {
-          AZURE_CLIENT_ID: !!clientId,
-          AZURE_CLIENT_SECRET: !!clientSecret,
-          AZURE_TENANT_ID: !!tenantId,
-        },
       });
     }
 
@@ -89,7 +93,6 @@ export default async function handler(req, res) {
     if (!tokenData.access_token) {
       return res.status(500).json({
         error: 'No se pudo obtener token de Azure',
-        details: tokenData,
       });
     }
 
@@ -102,7 +105,7 @@ export default async function handler(req, res) {
     const siteInfo = await siteInfoRes.json();
 
     if (!siteInfoRes.ok) {
-      return res.status(500).json({ error: 'No se pudo resolver el sitio SharePoint', details: siteInfo });
+      return res.status(500).json({ error: 'No se pudo resolver el sitio SharePoint' });
     }
 
     const graphResponse = await fetch(

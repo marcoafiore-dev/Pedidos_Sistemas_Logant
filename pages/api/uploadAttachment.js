@@ -58,7 +58,7 @@ export default async function handler(req, res) {
 
     const siteId = siteData.id;
 
-    // Crear carpeta "Adjuntos" si no existe
+    // Obtener drive (Documentos compartidos)
     const drivesRes = await fetch(
       `https://graph.microsoft.com/v1.0/sites/${siteId}/drive`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -66,40 +66,25 @@ export default async function handler(req, res) {
     const driveData = await drivesRes.json();
     const driveId = driveData.id;
 
-    // Buscar carpeta Adjuntos
+    // Buscar carpeta "Pedidos_Adjuntos"
     const folderSearchRes = await fetch(
-      `https://graph.microsoft.com/v1.0/drives/${driveId}/root/children?$filter=name eq 'Adjuntos'`,
+      `https://graph.microsoft.com/v1.0/drives/${driveId}/root/children?$filter=name eq 'Pedidos_Adjuntos'`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     const folderSearchData = await folderSearchRes.json();
 
-    let folderId;
-    if (folderSearchData.value && folderSearchData.value.length > 0) {
-      folderId = folderSearchData.value[0].id;
-    } else {
-      // Crear carpeta Adjuntos
-      const createFolderRes = await fetch(
-        `https://graph.microsoft.com/v1.0/drives/${driveId}/items/root/children`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: 'Adjuntos',
-            folder: {},
-            '@microsoft.graph.conflictBehavior': 'rename',
-          }),
-        }
-      );
-      const folderData = await createFolderRes.json();
-      folderId = folderData.id;
+    if (!folderSearchData.value || folderSearchData.value.length === 0) {
+      return res.status(400).json({ 
+        error: 'Pedidos_Adjuntos folder not found',
+        details: 'Please create the Pedidos_Adjuntos folder in Documents'
+      });
     }
 
-    // Crear subcarpeta para este item (ID del item como nombre)
+    const adjuntosFolderId = folderSearchData.value[0].id;
+
+    // Crear subcarpeta para este item (Item_[ID])
     const itemFolderRes = await fetch(
-      `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${folderId}/children`,
+      `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${adjuntosFolderId}/children`,
       {
         method: 'POST',
         headers: {
@@ -113,10 +98,11 @@ export default async function handler(req, res) {
         }),
       }
     );
+    
     const itemFolderData = await itemFolderRes.json();
     const itemFolderId = itemFolderData.id;
 
-    // Subir archivo
+    // Subir archivo a la subcarpeta
     const attachmentBuffer = Buffer.from(fileContent, 'base64');
 
     const uploadRes = await fetch(
@@ -133,6 +119,7 @@ export default async function handler(req, res) {
 
     if (!uploadRes.ok) {
       const errorText = await uploadRes.text();
+      console.error('Upload failed:', errorText);
       return res.status(uploadRes.status).json({ 
         error: 'Failed to upload file',
         details: errorText,
@@ -141,7 +128,7 @@ export default async function handler(req, res) {
 
     const uploadedFile = await uploadRes.json();
 
-    // Obtener URL compartible del archivo
+    // Generar link compartible
     const createLinkRes = await fetch(
       `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${uploadedFile.id}/createLink`,
       {
@@ -151,7 +138,7 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          type: 'view',
+          type: 'edit',
           scope: 'organization',
         }),
       }
@@ -159,6 +146,8 @@ export default async function handler(req, res) {
 
     const linkData = await createLinkRes.json();
     const shareLink = linkData.link?.webUrl || uploadedFile.webUrl;
+
+    console.log(`✓ File uploaded: ${fileName} → ${shareLink}`);
 
     return res.status(200).json({ 
       ok: true, 

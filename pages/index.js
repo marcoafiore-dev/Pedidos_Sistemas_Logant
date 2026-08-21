@@ -86,13 +86,12 @@ export default function Home() {
       return;
     }
 
-    // Limitar a 2 archivos máximo
     if (files.length > 2) {
       setErrorMsg('Máximo 2 archivos permitidos');
       return;
     }
 
-    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    const MAX_SIZE = 5 * 1024 * 1024;
     const newAttachments = [];
     setAttachmentProgress(`Procesando ${files.length} archivo(s)...`);
     setErrorMsg('');
@@ -152,41 +151,42 @@ export default function Home() {
 
     setStatus('sending');
 
-    // Enviar sin attachments primero
-    const payload = {
-      formData: {
-        Title: form.titulo,
-        Tipo: form.tipo,
-        Sistema: form.sistema || '',
-        Necesidad: form.necesidad,
-        MejoraEsperada: form.mejora,
-        Impacto: form.impacto,
-        Urgencia: form.urgencia,
-        Areadenegocio: form.area || '',
-        Justificacion: form.justificacion,
-        Fechadeentregaesperada: form.fecha || null,
-        Solicitante: form.solicitante,
-        Estado: 'Nuevo',
-      },
-    };
-
     try {
-      const res = await fetch('/api/createItem', {
+      // STEP 1: Crear item sin attachments
+      const createPayload = {
+        formData: {
+          Title: form.titulo,
+          Tipo: form.tipo,
+          Sistema: form.sistema || '',
+          Necesidad: form.necesidad,
+          MejoraEsperada: form.mejora,
+          Impacto: form.impacto,
+          Urgencia: form.urgencia,
+          Areadenegocio: form.area || '',
+          Justificacion: form.justificacion,
+          Fechadeentregaesperada: form.fecha || null,
+          Solicitante: form.solicitante,
+          Estado: 'Nuevo',
+        },
+      };
+
+      const createRes = await fetch('/api/createItem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(createPayload),
       });
 
-      const data = await res.json();
+      const createData = await createRes.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Error desconocido');
+      if (!createRes.ok) {
+        throw new Error(createData.error || 'Error creando solicitud');
       }
 
-      // Si hay attachments, subirlos después de crear el item
+      const itemId = createData.item.id;
+      const attachmentLinks = [];
+
+      // STEP 2: Subir attachments y recolectar links
       if (form.attachments && form.attachments.length > 0) {
-        const itemId = data.item.id;
-        
         for (const attachment of form.attachments) {
           try {
             const attachRes = await fetch('/api/uploadAttachment', {
@@ -199,12 +199,17 @@ export default function Home() {
               }),
             });
 
-            if (!attachRes.ok) {
-              const attachError = await attachRes.json();
-              console.warn(`Advertencia: No se pudo subir ${attachment.name}`, attachError);
+            if (attachRes.ok) {
+              const attachData = await attachRes.json();
+              attachmentLinks.push({
+                fileName: attachment.name,
+                webUrl: attachData.webUrl,
+              });
+            } else {
+              console.warn(`No se pudo subir ${attachment.name}`);
             }
           } catch (attachErr) {
-            console.warn(`Advertencia: Error subiendo ${attachment.name}`, attachErr.message);
+            console.warn(`Error subiendo ${attachment.name}:`, attachErr.message);
           }
         }
       }
@@ -353,7 +358,7 @@ export default function Home() {
               onChange={handleFileChange}
               disabled={status === 'sending'}
             />
-            <small>Podés adjuntar capturas de pantalla, documentos, especificaciones, etc.</small>
+            <small>Podés adjuntar capturas de pantalla, documentos, especificaciones, etc. Los links aparecerán en el campo Necesidad</small>
             {form.attachments.length > 0 && (
               <div className="attachments-list">
                 <strong>Archivos adjuntos ({form.attachments.length}):</strong>
@@ -375,7 +380,7 @@ export default function Home() {
             <div className="msg info">Ya podés cerrar esta pestaña o ventana.</div>
           )}
           {status === 'success' && (
-            <div className="msg success">✓ Solicitud enviada exitosamente. Será revisada por el equipo de sistemas.</div>
+            <div className="msg success">✓ Solicitud enviada exitosamente. Los links a los adjuntos aparecen en el campo Necesidad.</div>
           )}
           {(status === 'error' || errorMsg) && (
             <div className="msg error">✗ {errorMsg || 'Error al enviar la solicitud. Por favor, intenta nuevamente.'}</div>
