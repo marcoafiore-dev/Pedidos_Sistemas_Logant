@@ -9,9 +9,7 @@ const URGENCIAS = [
 ];
 const AREAS = ['Administracion', 'Operaciones', 'Finanzas', 'Capital Humano', 'Sistemas', 'Comercial'];
 
-// Función para capturar el nombre del usuario desde SharePoint
 const getUserName = () => {
-  // Estrategia 1: Variable global de SharePoint (_spPageContextInfo)
   if (typeof window !== 'undefined' && window._spPageContextInfo) {
     if (window._spPageContextInfo.userEmail) {
       return window._spPageContextInfo.userEmail;
@@ -22,22 +20,17 @@ const getUserName = () => {
     }
   }
 
-  // Estrategia 2: Buscar en localStorage/sessionStorage (SharePoint a veces lo pone)
   if (typeof window !== 'undefined') {
     try {
       const stored = localStorage.getItem('userEmail') || sessionStorage.getItem('userEmail');
       if (stored) return stored;
-    } catch (e) {
-      // Ignorar errores de acceso
-    }
+    } catch (e) {}
   }
 
-  // Estrategia 3: Buscar en variables globales de SharePoint alternativas
   if (typeof window !== 'undefined' && window._spUserInfo) {
     return window._spUserInfo.email || window._spUserInfo.name || 'Usuario Desconocido';
   }
 
-  // Estrategia 4: Parámetro en URL (solo si no es un token literalizado)
   if (typeof window !== 'undefined') {
     const urlParams = new URLSearchParams(window.location.search);
     const userParam = urlParams.get('user');
@@ -46,7 +39,6 @@ const getUserName = () => {
     }
   }
 
-  // Si nada funciona, retornar valor por defecto
   return 'Usuario Desconocido';
 };
 
@@ -62,19 +54,19 @@ const initialState = {
   justificacion: '',
   fecha: '',
   solicitante: '',
+  attachments: [],
 };
 
 export default function Home() {
   const [form, setForm] = useState(initialState);
-  
-  // Capturar usuario cuando carga el componente
-  useEffect(() => {
-    // No pre-llenar con usuario desconocido, dejar vacío para que ingrese manualmente
-    setForm(prev => ({ ...prev, solicitante: '' }));
-  }, []);
-  const [status, setStatus] = useState(null); // null | 'sending' | 'success' | 'error'
+  const [status, setStatus] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [closeBlocked, setCloseBlocked] = useState(false);
+  const [attachmentProgress, setAttachmentProgress] = useState('');
+
+  useEffect(() => {
+    setForm(prev => ({ ...prev, solicitante: '' }));
+  }, []);
 
   const update = (field) => (e) => {
     const value = e.target.value;
@@ -85,10 +77,57 @@ export default function Home() {
     }));
   };
 
+  const handleFileChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    
+    if (files.length === 0) {
+      setForm(prev => ({ ...prev, attachments: [] }));
+      return;
+    }
+
+    if (files.length > 5) {
+      setErrorMsg('Máximo 5 archivos permitidos');
+      return;
+    }
+
+    const MAX_SIZE = 10 * 1024 * 1024;
+    const newAttachments = [];
+    setAttachmentProgress(`Procesando ${files.length} archivo(s)...`);
+
+    for (const file of files) {
+      if (file.size > MAX_SIZE) {
+        setErrorMsg(`El archivo "${file.name}" excede 10MB`);
+        setAttachmentProgress('');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result.split(',')[1];
+        newAttachments.push({
+          name: file.name,
+          content: base64,
+          size: file.size,
+        });
+
+        if (newAttachments.length === files.length) {
+          setForm(prev => ({ ...prev, attachments: newAttachments }));
+          setAttachmentProgress(`✓ ${newAttachments.length} archivo(s) listo(s)`);
+          setTimeout(() => setAttachmentProgress(''), 2000);
+        }
+      };
+
+      reader.onerror = () => {
+        setErrorMsg(`Error al leer archivo "${file.name}"`);
+        setAttachmentProgress('');
+      };
+
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleClose = () => {
     window.close();
-    // Si el navegador bloquea el cierre (pestaña no abierta por script),
-    // avisamos al usuario que puede cerrarla manualmente.
     setTimeout(() => {
       setErrorMsg('');
       setStatus(null);
@@ -125,6 +164,7 @@ export default function Home() {
         Solicitante: form.solicitante,
         Estado: 'Nuevo',
       },
+      attachments: form.attachments,
     };
 
     try {
@@ -268,10 +308,38 @@ export default function Home() {
           </section>
 
           <section>
-            <h2>5. Cronograma (Opcional)</h2>
+            <h2>6. Cronograma (Opcional)</h2>
             <label>¿Para cuándo la necesitas?</label>
             <input type="date" value={form.fecha} onChange={update('fecha')} />
             <small>Fecha deseada de disponibilidad</small>
+          </section>
+
+          <section>
+            <h2>7. Adjuntos (Opcional)</h2>
+            <label>Archivos adjuntos (máximo 5 archivos, 10MB cada uno)</label>
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.xlsx,.xls,.png,.jpg,.jpeg,.txt"
+              onChange={handleFileChange}
+              disabled={status === 'sending'}
+            />
+            <small>Podés adjuntar capturas de pantalla, documentos, especificaciones, etc.</small>
+            {form.attachments.length > 0 && (
+              <div className="attachments-list">
+                <strong>Archivos adjuntos ({form.attachments.length}):</strong>
+                <ul>
+                  {form.attachments.map((att, idx) => (
+                    <li key={idx}>
+                      {att.name} ({(att.size / 1024 / 1024).toFixed(2)}MB)
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {attachmentProgress && (
+              <small className="progress">{attachmentProgress}</small>
+            )}
           </section>
 
           {closeBlocked && (
@@ -339,7 +407,7 @@ export default function Home() {
           margin: 14px 0 6px;
           color: #1f2937;
         }
-        select, textarea, input[type="date"], input[type="text"] {
+        select, textarea, input[type="date"], input[type="text"], input[type="file"] {
           width: 100%;
           padding: 10px 12px;
           border: 1px solid #d1d5db;
@@ -348,8 +416,16 @@ export default function Home() {
           font-family: inherit;
           box-sizing: border-box;
         }
+        input[type="file"] {
+          padding: 8px;
+        }
+        input[type="file"]:disabled {
+          background-color: #f3f4f6;
+          cursor: not-allowed;
+        }
         textarea { min-height: 80px; resize: vertical; }
         small { display: block; color: #6b7280; margin-top: 4px; font-size: 12px; }
+        small.progress { color: #059669; font-weight: 600; }
         .grid2 {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -357,6 +433,28 @@ export default function Home() {
         }
         @media (max-width: 600px) {
           .grid2 { grid-template-columns: 1fr; }
+        }
+        .attachments-list {
+          background: #f0fdf4;
+          border: 1px solid #bbf7d0;
+          border-radius: 8px;
+          padding: 12px;
+          margin-top: 12px;
+        }
+        .attachments-list strong {
+          color: #065f46;
+          font-size: 13px;
+        }
+        .attachments-list ul {
+          list-style: none;
+          padding: 8px 0 0;
+          margin: 0;
+        }
+        .attachments-list li {
+          color: #047857;
+          font-size: 13px;
+          padding: 4px 0;
+          margin-left: 12px;
         }
         .msg {
           padding: 12px 16px;
