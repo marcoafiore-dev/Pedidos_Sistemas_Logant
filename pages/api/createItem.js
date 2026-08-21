@@ -1,7 +1,7 @@
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '50mb',
+      sizeLimit: '25mb',
     },
   },
 };
@@ -130,7 +130,6 @@ export default async function handler(req, res) {
     let uploadedCount = 0;
     let failedCount = 0;
 
-    // Si hay attachments, subirlos
     if (req.body.attachments && req.body.attachments.length > 0) {
       for (const attachment of req.body.attachments) {
         try {
@@ -168,6 +167,7 @@ export default async function handler(req, res) {
       attachments: {
         uploaded: uploadedCount,
         failed: failedCount,
+        total: (req.body.attachments || []).length,
       }
     });
   } catch (error) {

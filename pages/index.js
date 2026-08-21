@@ -82,21 +82,24 @@ export default function Home() {
     
     if (files.length === 0) {
       setForm(prev => ({ ...prev, attachments: [] }));
+      setErrorMsg('');
       return;
     }
 
-    if (files.length > 5) {
-      setErrorMsg('Máximo 5 archivos permitidos');
+    // Limitar a 2 archivos máximo
+    if (files.length > 2) {
+      setErrorMsg('Máximo 2 archivos permitidos');
       return;
     }
 
-    const MAX_SIZE = 10 * 1024 * 1024;
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
     const newAttachments = [];
     setAttachmentProgress(`Procesando ${files.length} archivo(s)...`);
+    setErrorMsg('');
 
     for (const file of files) {
       if (file.size > MAX_SIZE) {
-        setErrorMsg(`El archivo "${file.name}" excede 10MB`);
+        setErrorMsg(`El archivo "${file.name}" excede 5MB (tamaño: ${(file.size / 1024 / 1024).toFixed(2)}MB)`);
         setAttachmentProgress('');
         return;
       }
@@ -316,7 +319,7 @@ export default function Home() {
 
           <section>
             <h2>7. Adjuntos (Opcional)</h2>
-            <label>Archivos adjuntos (máximo 5 archivos, 10MB cada uno)</label>
+            <label>Archivos adjuntos (máximo 2 archivos, 5MB cada uno)</label>
             <input
               type="file"
               multiple
