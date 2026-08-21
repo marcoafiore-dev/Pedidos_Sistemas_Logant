@@ -14,8 +14,8 @@ export default async function handler(req, res) {
   try {
     const { fileName, fileContent, itemId } = req.body;
 
-    if (!fileName || !fileContent || !itemId) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!fileName || !fileContent) {
+      return res.status(400).json({ error: 'Missing fileName or fileContent' });
     }
 
     const clientId = process.env.AZURE_CLIENT_ID;
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
 
     const tokenData = await tokenResponse.json();
     if (!tokenData.access_token) {
-      return res.status(500).json({ error: 'Failed to obtain token' });
+      return res.status(500).json({ error: 'Failed to get token' });
     }
 
     const accessToken = tokenData.access_token;
@@ -51,62 +51,38 @@ export default async function handler(req, res) {
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     const siteData = await siteRes.json();
-
-    if (!siteRes.ok) {
-      return res.status(500).json({ error: 'Failed to resolve site', details: siteData });
-    }
-
     const siteId = siteData.id;
 
-    // Obtener drive (Documentos compartidos)
-    const drivesRes = await fetch(
+    // Obtener drive
+    const driveRes = await fetch(
       `https://graph.microsoft.com/v1.0/sites/${siteId}/drive`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
-    const driveData = await drivesRes.json();
+    const driveData = await driveRes.json();
     const driveId = driveData.id;
 
-    // Buscar carpeta "Pedidos_Adjuntos"
-    const folderSearchRes = await fetch(
-      `https://graph.microsoft.com/v1.0/drives/${driveId}/root/children?$filter=name eq 'Pedidos_Adjuntos'`,
+    // Buscar carpeta Pedidos_Adjuntos usando ruta en lugar de búsqueda
+    const adjuntosRes = await fetch(
+      `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/Pedidos_Adjuntos`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
-    const folderSearchData = await folderSearchRes.json();
 
-    if (!folderSearchData.value || folderSearchData.value.length === 0) {
+    if (!adjuntosRes.ok) {
+      console.error('Pedidos_Adjuntos folder not found at root');
       return res.status(400).json({ 
-        error: 'Pedidos_Adjuntos folder not found',
-        details: 'Please create the Pedidos_Adjuntos folder in Documents'
+        error: 'Pedidos_Adjuntos folder not found in drive root',
       });
     }
 
-    const adjuntosFolderId = folderSearchData.value[0].id;
+    const adjuntosData = await adjuntosRes.json();
+    const adjuntosFolderId = adjuntosData.id;
 
-    // Crear subcarpeta para este item (Item_[ID])
-    const itemFolderRes = await fetch(
-      `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${adjuntosFolderId}/children`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: `Item_${itemId}`,
-          folder: {},
-          '@microsoft.graph.conflictBehavior': 'replace',
-        }),
-      }
-    );
-    
-    const itemFolderData = await itemFolderRes.json();
-    const itemFolderId = itemFolderData.id;
-
-    // Subir archivo a la subcarpeta
+    // Subir archivo DIRECTAMENTE a Pedidos_Adjuntos (sin subcarpeta)
+    const uniqueFileName = `Item_${itemId}_${Date.now()}_${fileName}`;
     const attachmentBuffer = Buffer.from(fileContent, 'base64');
 
     const uploadRes = await fetch(
-      `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemFolderId}:/${encodeURIComponent(fileName)}:/content`,
+      `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${adjuntosFolderId}:/${encodeURIComponent(uniqueFileName)}:/content`,
       {
         method: 'PUT',
         headers: {
@@ -121,7 +97,8 @@ export default async function handler(req, res) {
       const errorText = await uploadRes.text();
       console.error('Upload failed:', errorText);
       return res.status(uploadRes.status).json({ 
-        error: 'Failed to upload file',
+        error: 'Upload failed',
+        status: uploadRes.status,
         details: errorText,
       });
     }
@@ -129,7 +106,7 @@ export default async function handler(req, res) {
     const uploadedFile = await uploadRes.json();
 
     // Generar link compartible
-    const createLinkRes = await fetch(
+    const linkRes = await fetch(
       `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${uploadedFile.id}/createLink`,
       {
         method: 'POST',
@@ -144,19 +121,18 @@ export default async function handler(req, res) {
       }
     );
 
-    const linkData = await createLinkRes.json();
+    const linkData = await linkRes.json();
     const shareLink = linkData.link?.webUrl || uploadedFile.webUrl;
 
-    console.log(`✓ File uploaded: ${fileName} → ${shareLink}`);
+    console.log(`✓ Uploaded ${fileName} to Pedidos_Adjuntos`);
 
     return res.status(200).json({ 
       ok: true, 
       fileName,
-      fileId: uploadedFile.id,
       webUrl: shareLink,
     });
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('Error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
