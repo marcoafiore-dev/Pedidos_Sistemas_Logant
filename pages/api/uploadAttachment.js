@@ -18,11 +18,19 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing fileName or fileContent' });
     }
 
+    console.log(`[UPLOAD START] fileName=${fileName}, size=${fileContent.length} chars`);
+
     const clientId = process.env.AZURE_CLIENT_ID;
     const clientSecret = process.env.AZURE_CLIENT_SECRET;
     const tenantId = process.env.AZURE_TENANT_ID;
 
+    if (!clientId || !clientSecret || !tenantId) {
+      console.error('[ERROR] Missing Azure credentials');
+      return res.status(500).json({ error: 'Azure credentials not configured' });
+    }
+
     // Obtener token
+    console.log('[TOKEN] Requesting Azure token...');
     const params = new URLSearchParams();
     params.append('client_id', clientId);
     params.append('client_secret', clientSecret);
@@ -40,46 +48,71 @@ export default async function handler(req, res) {
 
     const tokenData = await tokenResponse.json();
     if (!tokenData.access_token) {
-      return res.status(500).json({ error: 'Failed to get token' });
+      console.error('[ERROR] Token request failed:', tokenData);
+      return res.status(500).json({ error: 'Failed to get token', details: tokenData });
     }
+    console.log('[TOKEN] ✓ Token obtained');
 
     const accessToken = tokenData.access_token;
 
     // Resolver sitio
+    console.log('[SITE] Resolving SharePoint site...');
     const siteRes = await fetch(
       'https://graph.microsoft.com/v1.0/sites/logisticaantartica.sharepoint.com:/sites/Sistemas',
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     const siteData = await siteRes.json();
+    if (!siteData.id) {
+      console.error('[ERROR] Site resolution failed:', siteData);
+      return res.status(500).json({ error: 'Site resolution failed', details: siteData });
+    }
     const siteId = siteData.id;
+    console.log('[SITE] ✓ Site resolved:', siteId);
 
     // Obtener drive
+    console.log('[DRIVE] Getting drive...');
     const driveRes = await fetch(
       `https://graph.microsoft.com/v1.0/sites/${siteId}/drive`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     const driveData = await driveRes.json();
+    if (!driveData.id) {
+      console.error('[ERROR] Drive resolution failed:', driveData);
+      return res.status(500).json({ error: 'Drive resolution failed', details: driveData });
+    }
     const driveId = driveData.id;
+    console.log('[DRIVE] ✓ Drive resolved:', driveId);
 
-    // Buscar carpeta Pedidos_Adjuntos usando ruta en lugar de búsqueda
+    // Buscar carpeta Pedidos_Adjuntos
+    console.log('[FOLDER] Looking for Pedidos_Adjuntos folder...');
     const adjuntosRes = await fetch(
       `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/Pedidos_Adjuntos`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
+    
+    console.log('[FOLDER] Response status:', adjuntosRes.status);
+    const adjuntosData = await adjuntosRes.json();
+    console.log('[FOLDER] Response:', adjuntosData);
 
-    if (!adjuntosRes.ok) {
-      console.error('Pedidos_Adjuntos folder not found at root');
+    if (!adjuntosRes.ok || !adjuntosData.id) {
+      console.error('[ERROR] Pedidos_Adjuntos not found:', adjuntosData);
       return res.status(400).json({ 
-        error: 'Pedidos_Adjuntos folder not found in drive root',
+        error: 'Pedidos_Adjuntos folder not found',
+        details: adjuntosData,
+        endpoint: `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/Pedidos_Adjuntos`,
       });
     }
 
-    const adjuntosData = await adjuntosRes.json();
     const adjuntosFolderId = adjuntosData.id;
+    console.log('[FOLDER] ✓ Folder found:', adjuntosFolderId);
 
-    // Subir archivo DIRECTAMENTE a Pedidos_Adjuntos (sin subcarpeta)
+    // Subir archivo
+    console.log('[UPLOAD] Starting file upload...');
     const uniqueFileName = `Item_${itemId}_${Date.now()}_${fileName}`;
     const attachmentBuffer = Buffer.from(fileContent, 'base64');
+    
+    console.log('[UPLOAD] Buffer size:', attachmentBuffer.length, 'bytes');
+    console.log('[UPLOAD] Unique filename:', uniqueFileName);
 
     const uploadRes = await fetch(
       `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${adjuntosFolderId}:/${encodeURIComponent(uniqueFileName)}:/content`,
@@ -93,19 +126,28 @@ export default async function handler(req, res) {
       }
     );
 
+    console.log('[UPLOAD] Response status:', uploadRes.status);
+    const uploadedFile = await uploadRes.json();
+    console.log('[UPLOAD] Response:', uploadedFile);
+
     if (!uploadRes.ok) {
-      const errorText = await uploadRes.text();
-      console.error('Upload failed:', errorText);
+      console.error('[ERROR] Upload failed:', uploadedFile);
       return res.status(uploadRes.status).json({ 
         error: 'Upload failed',
         status: uploadRes.status,
-        details: errorText,
+        details: uploadedFile,
       });
     }
 
-    const uploadedFile = await uploadRes.json();
+    if (!uploadedFile.id) {
+      console.error('[ERROR] No file ID in response:', uploadedFile);
+      return res.status(400).json({ error: 'Upload succeeded but no file ID', details: uploadedFile });
+    }
 
-    // Generar link compartible
+    console.log('[UPLOAD] ✓ File uploaded:', uploadedFile.id);
+
+    // Generar link
+    console.log('[LINK] Creating shareable link...');
     const linkRes = await fetch(
       `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${uploadedFile.id}/createLink`,
       {
@@ -123,8 +165,7 @@ export default async function handler(req, res) {
 
     const linkData = await linkRes.json();
     const shareLink = linkData.link?.webUrl || uploadedFile.webUrl;
-
-    console.log(`✓ Uploaded ${fileName} to Pedidos_Adjuntos`);
+    console.log('[LINK] ✓ Link created:', shareLink);
 
     return res.status(200).json({ 
       ok: true, 
@@ -132,7 +173,7 @@ export default async function handler(req, res) {
       webUrl: shareLink,
     });
   } catch (error) {
-    console.error('Error:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('[EXCEPTION]', error);
+    return res.status(500).json({ error: error.message, stack: error.stack });
   }
 }
