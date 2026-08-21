@@ -54,7 +54,6 @@ const initialState = {
   justificacion: '',
   fecha: '',
   solicitante: '',
-  attachments: [],
 };
 
 export default function Home() {
@@ -62,7 +61,6 @@ export default function Home() {
   const [status, setStatus] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [closeBlocked, setCloseBlocked] = useState(false);
-  const [attachmentProgress, setAttachmentProgress] = useState('');
 
   useEffect(() => {
     setForm(prev => ({ ...prev, solicitante: '' }));
@@ -75,57 +73,6 @@ export default function Home() {
       [field]: value,
       ...(field === 'tipo' && value !== 'Mejora' ? { sistema: '' } : {}),
     }));
-  };
-
-  const handleFileChange = async (e) => {
-    const files = Array.from(e.target.files || []);
-    
-    if (files.length === 0) {
-      setForm(prev => ({ ...prev, attachments: [] }));
-      setErrorMsg('');
-      return;
-    }
-
-    if (files.length > 2) {
-      setErrorMsg('Máximo 2 archivos permitidos');
-      return;
-    }
-
-    const MAX_SIZE = 5 * 1024 * 1024;
-    const newAttachments = [];
-    setAttachmentProgress(`Procesando ${files.length} archivo(s)...`);
-    setErrorMsg('');
-
-    for (const file of files) {
-      if (file.size > MAX_SIZE) {
-        setErrorMsg(`El archivo "${file.name}" excede 5MB (tamaño: ${(file.size / 1024 / 1024).toFixed(2)}MB)`);
-        setAttachmentProgress('');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result.split(',')[1];
-        newAttachments.push({
-          name: file.name,
-          content: base64,
-          size: file.size,
-        });
-
-        if (newAttachments.length === files.length) {
-          setForm(prev => ({ ...prev, attachments: newAttachments }));
-          setAttachmentProgress(`✓ ${newAttachments.length} archivo(s) listo(s)`);
-          setTimeout(() => setAttachmentProgress(''), 2000);
-        }
-      };
-
-      reader.onerror = () => {
-        setErrorMsg(`Error al leer archivo "${file.name}"`);
-        setAttachmentProgress('');
-      };
-
-      reader.readAsDataURL(file);
-    }
   };
 
   const handleClose = () => {
@@ -151,67 +98,34 @@ export default function Home() {
 
     setStatus('sending');
 
-    try {
-      // STEP 1: Crear item sin attachments
-      const createPayload = {
-        formData: {
-          Title: form.titulo,
-          Tipo: form.tipo,
-          Sistema: form.sistema || '',
-          Necesidad: form.necesidad,
-          MejoraEsperada: form.mejora,
-          Impacto: form.impacto,
-          Urgencia: form.urgencia,
-          Areadenegocio: form.area || '',
-          Justificacion: form.justificacion,
-          Fechadeentregaesperada: form.fecha || null,
-          Solicitante: form.solicitante,
-          Estado: 'Nuevo',
-        },
-      };
+    const payload = {
+      formData: {
+        Title: form.titulo,
+        Tipo: form.tipo,
+        Sistema: form.sistema || '',
+        Necesidad: form.necesidad,
+        MejoraEsperada: form.mejora,
+        Impacto: form.impacto,
+        Urgencia: form.urgencia,
+        Areadenegocio: form.area || '',
+        Justificacion: form.justificacion,
+        Fechadeentregaesperada: form.fecha || null,
+        Solicitante: form.solicitante,
+        Estado: 'Nuevo',
+      },
+    };
 
-      const createRes = await fetch('/api/createItem', {
+    try {
+      const res = await fetch('/api/createItem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(createPayload),
+        body: JSON.stringify(payload),
       });
 
-      const createData = await createRes.json();
+      const data = await res.json();
 
-      if (!createRes.ok) {
-        throw new Error(createData.error || 'Error creando solicitud');
-      }
-
-      const itemId = createData.item.id;
-      const attachmentLinks = [];
-
-      // STEP 2: Subir attachments y recolectar links
-      if (form.attachments && form.attachments.length > 0) {
-        for (const attachment of form.attachments) {
-          try {
-            const attachRes = await fetch('/api/uploadAttachment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                fileName: attachment.name,
-                fileContent: attachment.content,
-                itemId: itemId,
-              }),
-            });
-
-            if (attachRes.ok) {
-              const attachData = await attachRes.json();
-              attachmentLinks.push({
-                fileName: attachment.name,
-                webUrl: attachData.webUrl,
-              });
-            } else {
-              console.warn(`No se pudo subir ${attachment.name}`);
-            }
-          } catch (attachErr) {
-            console.warn(`Error subiendo ${attachment.name}:`, attachErr.message);
-          }
-        }
+      if (!res.ok) {
+        throw new Error(data.error || 'Error desconocido');
       }
 
       setStatus('success');
@@ -348,39 +262,11 @@ export default function Home() {
             <small>Fecha deseada de disponibilidad</small>
           </section>
 
-          <section>
-            <h2>7. Adjuntos (Opcional)</h2>
-            <label>Archivos adjuntos (máximo 2 archivos, 5MB cada uno)</label>
-            <input
-              type="file"
-              multiple
-              accept=".pdf,.doc,.docx,.xlsx,.xls,.png,.jpg,.jpeg,.txt"
-              onChange={handleFileChange}
-              disabled={status === 'sending'}
-            />
-            <small>Podés adjuntar capturas de pantalla, documentos, especificaciones, etc. Los links aparecerán en el campo Necesidad</small>
-            {form.attachments.length > 0 && (
-              <div className="attachments-list">
-                <strong>Archivos adjuntos ({form.attachments.length}):</strong>
-                <ul>
-                  {form.attachments.map((att, idx) => (
-                    <li key={idx}>
-                      {att.name} ({(att.size / 1024 / 1024).toFixed(2)}MB)
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {attachmentProgress && (
-              <small className="progress">{attachmentProgress}</small>
-            )}
-          </section>
-
           {closeBlocked && (
             <div className="msg info">Ya podés cerrar esta pestaña o ventana.</div>
           )}
           {status === 'success' && (
-            <div className="msg success">✓ Solicitud enviada exitosamente. Los links a los adjuntos aparecen en el campo Necesidad.</div>
+            <div className="msg success">✓ Solicitud enviada exitosamente. Será revisada por el equipo de sistemas.</div>
           )}
           {(status === 'error' || errorMsg) && (
             <div className="msg error">✗ {errorMsg || 'Error al enviar la solicitud. Por favor, intenta nuevamente.'}</div>
@@ -441,7 +327,7 @@ export default function Home() {
           margin: 14px 0 6px;
           color: #1f2937;
         }
-        select, textarea, input[type="date"], input[type="text"], input[type="file"] {
+        select, textarea, input[type="date"], input[type="text"] {
           width: 100%;
           padding: 10px 12px;
           border: 1px solid #d1d5db;
@@ -450,16 +336,8 @@ export default function Home() {
           font-family: inherit;
           box-sizing: border-box;
         }
-        input[type="file"] {
-          padding: 8px;
-        }
-        input[type="file"]:disabled {
-          background-color: #f3f4f6;
-          cursor: not-allowed;
-        }
         textarea { min-height: 80px; resize: vertical; }
         small { display: block; color: #6b7280; margin-top: 4px; font-size: 12px; }
-        small.progress { color: #059669; font-weight: 600; }
         .grid2 {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -467,28 +345,6 @@ export default function Home() {
         }
         @media (max-width: 600px) {
           .grid2 { grid-template-columns: 1fr; }
-        }
-        .attachments-list {
-          background: #f0fdf4;
-          border: 1px solid #bbf7d0;
-          border-radius: 8px;
-          padding: 12px;
-          margin-top: 12px;
-        }
-        .attachments-list strong {
-          color: #065f46;
-          font-size: 13px;
-        }
-        .attachments-list ul {
-          list-style: none;
-          padding: 8px 0 0;
-          margin: 0;
-        }
-        .attachments-list li {
-          color: #047857;
-          font-size: 13px;
-          padding: 4px 0;
-          margin-left: 12px;
         }
         .msg {
           padding: 12px 16px;
