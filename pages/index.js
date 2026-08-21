@@ -152,6 +152,7 @@ export default function Home() {
 
     setStatus('sending');
 
+    // Enviar sin attachments primero
     const payload = {
       formData: {
         Title: form.titulo,
@@ -167,7 +168,6 @@ export default function Home() {
         Solicitante: form.solicitante,
         Estado: 'Nuevo',
       },
-      attachments: form.attachments,
     };
 
     try {
@@ -181,6 +181,32 @@ export default function Home() {
 
       if (!res.ok) {
         throw new Error(data.error || 'Error desconocido');
+      }
+
+      // Si hay attachments, subirlos después de crear el item
+      if (form.attachments && form.attachments.length > 0) {
+        const itemId = data.item.id;
+        
+        for (const attachment of form.attachments) {
+          try {
+            const attachRes = await fetch('/api/uploadAttachment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                fileName: attachment.name,
+                fileContent: attachment.content,
+                itemId: itemId,
+              }),
+            });
+
+            if (!attachRes.ok) {
+              const attachError = await attachRes.json();
+              console.warn(`Advertencia: No se pudo subir ${attachment.name}`, attachError);
+            }
+          } catch (attachErr) {
+            console.warn(`Advertencia: Error subiendo ${attachment.name}`, attachErr.message);
+          }
+        }
       }
 
       setStatus('success');

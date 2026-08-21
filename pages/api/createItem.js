@@ -128,21 +128,23 @@ export default async function handler(req, res) {
 
     const itemId = graphData.id;
     let uploadedCount = 0;
-    let failedCount = 0;
+    let failedAttachments = [];
 
+    // Subir attachments si existen
     if (req.body.attachments && req.body.attachments.length > 0) {
       for (const attachment of req.body.attachments) {
         try {
           const attachmentBuffer = Buffer.from(attachment.content, 'base64');
-
+          
+          // Usar el endpoint correcto para attachments en SharePoint
           const attachRes = await fetch(
             `https://graph.microsoft.com/v1.0/sites/${siteInfo.id}/lists/${LIST_ID}/items/${itemId}/attachments`,
             {
               method: 'POST',
               headers: {
-                Authorization: `Bearer ${tokenData.access_token}`,
+                'Authorization': `Bearer ${tokenData.access_token}`,
                 'Content-Type': 'application/octet-stream',
-                'Content-Disposition': `attachment; filename="${encodeURIComponent(attachment.name)}"`,
+                'Content-Disposition': `attachment; filename="${attachment.name}"`,
               },
               body: attachmentBuffer,
             }
@@ -150,13 +152,22 @@ export default async function handler(req, res) {
 
           if (attachRes.ok) {
             uploadedCount++;
+            console.log(`✓ Attachment uploaded: ${attachment.name}`);
           } else {
-            failedCount++;
-            console.error(`Error uploading attachment ${attachment.name}:`, await attachRes.text());
+            const errorText = await attachRes.text();
+            failedAttachments.push({
+              name: attachment.name,
+              status: attachRes.status,
+              error: errorText,
+            });
+            console.error(`✗ Error uploading ${attachment.name}:`, errorText);
           }
         } catch (attachErr) {
-          failedCount++;
-          console.error(`Error uploading attachment ${attachment.name}:`, attachErr.message);
+          failedAttachments.push({
+            name: attachment.name,
+            error: attachErr.message,
+          });
+          console.error(`✗ Exception uploading ${attachment.name}:`, attachErr.message);
         }
       }
     }
@@ -166,7 +177,8 @@ export default async function handler(req, res) {
       item: graphData,
       attachments: {
         uploaded: uploadedCount,
-        failed: failedCount,
+        failed: failedAttachments.length,
+        failedDetails: failedAttachments,
         total: (req.body.attachments || []).length,
       }
     });
